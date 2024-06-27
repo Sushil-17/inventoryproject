@@ -1,10 +1,11 @@
-from django.shortcuts import render , redirect
+from django.shortcuts import render , redirect , get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from .models import Product, Order
 from .forms import ProductForm, OrderForm
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.db import transaction
 
 # Create your views here.
 @login_required
@@ -19,8 +20,23 @@ def index(request):
         if form.is_valid():
             instance = form.save(commit=False)
             instance.staff = request.user
+
+            # Update product quantity  after getting order from the staff.
+            product_id = form.cleaned_data['product'].id
+            quantity_ordered = form.cleaned_data['order_quantity']
+            with transaction.atomic():
+                product = Product.objects.select_for_update().get(id=product_id)
+                if product.quantity >= quantity_ordered:
+                    product.quantity -= quantity_ordered
+                    product.save()
+                else:
+                    messages.error(request, f'Insufficient quantity available for {product.name}.')
+                    return redirect('dashboard-index')
+            
             instance.save()
-            return redirect ('dashboard-index')
+            messages.success(request, 'Order placed successfully.') #line from 
+            return redirect('dashboard-index')
+           #end of new code 
     else:
         form = OrderForm()
     context = {
@@ -118,3 +134,25 @@ def order(request):
     
     return render(request, 'dashboard/order.html',context)
 
+
+#logic code for approve and reject button but not working.
+
+# @login_required
+# def approve_order(request, pk):
+#     order = get_object_or_404(Order, pk=pk)
+#     # Implement your logic to approve the order here
+#     # Example:
+#     order.status = 'Approved'
+#     order.save()
+#     messages.success(request, f'Order {order.pk} has been approved.')
+#     return redirect('dashboard-order')
+
+# @login_required
+# def reject_order(request, pk):
+#     order = get_object_or_404(Order, pk=pk)
+#     # Implement your logic to reject the order here
+#     # Example:
+#     order.status = 'Rejected'
+#     order.save()
+#     messages.success(request, f'Order {order.pk} has been rejected.')
+#     return redirect('dashboard-order')

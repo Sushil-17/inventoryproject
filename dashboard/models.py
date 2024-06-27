@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+# from .models import Product #chatgpt
 # Create your models here.
 CATEGORY = (
     ('Communication','Communication'),
@@ -27,4 +28,8 @@ class Order(models.Model):
         verbose_name_plural = 'Order'
 
     def __str__(self):
-        return f'{self.product} ordered by {self.staff.username}'
+        if self.staff:
+            return f'{self.product} ordered by {self.staff.username}'
+        else:
+            return f'{self.product} (No staff assigned)'
+        # return f'{self.product} ordered by {self.staff.username}'
